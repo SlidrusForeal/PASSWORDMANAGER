@@ -5,10 +5,12 @@ import base64
 PASSWORDS_FILE = 'passwords.txt'
 
 def encrypt_base64(plaintext):
+    # Зашифровать текст с помощью кодирования base64
     encoded_bytes = base64.b64encode(plaintext.encode('utf-8'))
     return encoded_bytes.decode('utf-8')
 
 def decrypt_base64(encoded_str):
+    # Расшифровать текст с помощью декодирования base64
     decoded_bytes = base64.b64decode(encoded_str.encode('utf-8'))
     return decoded_bytes.decode('utf-8')
 
@@ -19,7 +21,7 @@ def save_password_gui():
     password = password_entry.get()
     secret_phrase = secret_phrase_entry.get()
 
-    # Encrypt the password using base64 encoding
+    # Зашифровать пароль с помощью кодирования base64
     encoded_password = encrypt_base64(password)
 
     with open(PASSWORDS_FILE, 'a', encoding='utf-8') as f:
@@ -41,13 +43,13 @@ def show_passwords_gui():
             try:
                 website, username, encoded_password = line.split(",")
             except ValueError:
-                print(f"Skipping invalid line: {line}")
+                print(f"Пропускаю неверную строку: {line}")
                 continue
 
-            # Decrypt the password using base64 decoding
+            # Расшифровать пароль с помощью декодирования base64
             decoded_password = decrypt_base64(encoded_password)
 
-            # Add the decrypted password to the passwords text widget
+            # Добавить расшифрованный пароль в виджет текста паролей
             passwords_text.insert(END, f"Сайт: {website}\nИмя пользователя: {username}\nПароль: {decoded_password}\n\n")
 
 
