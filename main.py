@@ -1,18 +1,57 @@
-from tkinter import *
+import tkinter as tk
 from tkinter import messagebox
+from tkinter import ttk
 import base64
+import os
 
-PASSWORDS_FILE = 'passwords.txt'
+APP_NAME = 'PasswordManager'
 
-def encrypt_base64(plaintext):
-    # Зашифровать текст с помощью кодирования base64
-    encoded_bytes = base64.b64encode(plaintext.encode('utf-8'))
+# Determine the directory for storing user-specific data
+passwords_dir = os.path.join(os.getenv('APPDATA'), APP_NAME)
+
+# Create the PasswordManager directory if it doesn't exist
+os.makedirs(passwords_dir, exist_ok=True)
+
+PASSWORDS_FILE = os.path.join(passwords_dir, 'passwords.txt')
+
+
+def caesar_encrypt(plaintext, key):
+    encrypted = ''
+    for char in plaintext:
+        if char.isalpha():
+            ascii_offset = ord('A') if char.isupper() else ord('a')
+            encrypted += chr((ord(char) - ascii_offset + key) % 26 + ascii_offset)
+        else:
+            encrypted += char
+    return encrypted
+
+
+def caesar_decrypt(ciphertext, key):
+    decrypted = ''
+    for char in ciphertext:
+        if char.isalpha():
+            ascii_offset = ord('A') if char.isupper() else ord('a')
+            decrypted += chr((ord(char) - ascii_offset - key) % 26 + ascii_offset)
+        else:
+            decrypted += char
+    return decrypted
+
+
+def encrypt_base64(plaintext, key):
+    encrypted_text = caesar_encrypt(plaintext, key)
+    encoded_bytes = base64.b64encode(encrypted_text.encode('utf-8'))
     return encoded_bytes.decode('utf-8')
 
-def decrypt_base64(encoded_str):
-    # Расшифровать текст с помощью декодирования base64
+
+def decrypt_base64(encoded_str, key):
     decoded_bytes = base64.b64decode(encoded_str.encode('utf-8'))
-    return decoded_bytes.decode('utf-8')
+    try:
+        decrypted_text = decoded_bytes.decode('utf-8')
+    except UnicodeDecodeError:
+        decrypted_text = decoded_bytes.decode('utf-8', errors='replace')
+    decrypted_text = caesar_decrypt(decrypted_text, key)
+    return decrypted_text
+
 
 
 def save_password_gui():
@@ -21,20 +60,21 @@ def save_password_gui():
     password = password_entry.get()
     secret_phrase = secret_phrase_entry.get()
 
-    # Зашифровать пароль с помощью кодирования base64
-    encoded_password = encrypt_base64(password)
+    key = len(secret_phrase)  # Key for Caesar cipher based on secret phrase length
+    encoded_password = encrypt_base64(password, key)
 
     with open(PASSWORDS_FILE, 'a', encoding='utf-8') as f:
         f.write(f"{website},{username},{encoded_password}\n")
 
-    website_entry.delete(0, END)
-    username_entry.delete(0, END)
-    password_entry.delete(0, END)
+    website_entry.delete(0, tk.END)
+    username_entry.delete(0, tk.END)
+    password_entry.delete(0, tk.END)
 
 
 def show_passwords_gui():
     secret_phrase = secret_phrase_entry.get()
-    passwords_text.delete('1.0', END)
+    key = len(secret_phrase)  # Key for Caesar cipher based on secret phrase length
+    passwords_text.delete('1.0', tk.END)
     with open(PASSWORDS_FILE, "r", encoding='utf-8') as file:
         for line in file:
             line = line.strip()
@@ -43,50 +83,63 @@ def show_passwords_gui():
             try:
                 website, username, encoded_password = line.split(",")
             except ValueError:
-                print(f"Пропускаю неверную строку: {line}")
+                print(f"Skipping invalid line: {line}")
                 continue
 
-            # Расшифровать пароль с помощью декодирования base64
-            decoded_password = decrypt_base64(encoded_password)
+            decoded_password = decrypt_base64(encoded_password, key)
 
-            # Добавить расшифрованный пароль в виджет текста паролей
-            passwords_text.insert(END, f"Сайт: {website}\nИмя пользователя: {username}\nПароль: {decoded_password}\n\n")
+            passwords_text.insert(tk.END, f"Сайт: {website}\nИмя пользователя: {username}\nПароль: {decoded_password}\n\n")
 
 
-root = Tk()
+root = tk.Tk()
 root.title('Менеджер паролей')
 
-website_label = Label(root, text='Сайт:')
-website_label.pack()
+icon_path = 'icon.ico'
+if os.path.exists(icon_path):
+    root.iconbitmap(icon_path)
 
-website_entry = Entry(root)
-website_entry.pack()
+custom_style = ttk.Style()
+custom_style.configure("Custom.TLabel", font=("Helvetica", 12))
+custom_style.configure("Custom.TEntry", font=("Helvetica", 12))
+custom_style.configure("Custom.TButton", font=("Helvetica", 12))
 
-username_label = Label(root, text='Имя пользователя:')
-username_label.pack()
+website_label = ttk.Label(root, text='Сайт:', style="Custom.TLabel")
+website_label.grid(row=0, column=0, sticky=tk.E)
 
-username_entry = Entry(root)
-username_entry.pack()
+website_entry = ttk.Entry(root, style="Custom.TEntry")
+website_entry.grid(row=0, column=1)
 
-password_label = Label(root, text='Пароль:')
-password_label.pack()
+username_label = ttk.Label(root, text='Имя пользователя:', style="Custom.TLabel")
+username_label.grid(row=1, column=0, sticky=tk.E)
 
-password_entry = Entry(root, show='*')
-password_entry.pack()
+username_entry = ttk.Entry(root, style="Custom.TEntry")
+username_entry.grid(row=1, column=1)
 
-secret_phrase_label = Label(root, text='Секретная фраза:')
-secret_phrase_label.pack()
+password_label = ttk.Label(root, text='Пароль:', style="Custom.TLabel")
+password_label.grid(row=2, column=0, sticky=tk.E)
 
-secret_phrase_entry = Entry(root, show='*')
-secret_phrase_entry.pack()
+password_entry = ttk.Entry(root, show='*', style="Custom.TEntry")
+password_entry.grid(row=2, column=1)
 
-save_button = Button(root, text='Сохранить пароль', command=save_password_gui)
-save_button.pack()
+show_password_button = ttk.Button(root, text='Показать пароль', command=lambda: messagebox.showinfo('Пароль', password_entry.get()), style="Custom.TButton")
+show_password_button.grid(row=2, column=2)
 
-show_button = Button(root, text='Показать пароли', command=show_passwords_gui)
-show_button.pack()
+secret_phrase_label = ttk.Label(root, text='Секретная фраза:', style="Custom.TLabel")
+secret_phrase_label.grid(row=3, column=0, sticky=tk.E)
 
-passwords_text = Text(root)
-passwords_text.pack()
+secret_phrase_entry = ttk.Entry(root, show='*', style="Custom.TEntry")
+secret_phrase_entry.grid(row=3, column=1)
+
+show_secret_phrase_button = ttk.Button(root, text='Показать фразу', command=lambda: messagebox.showinfo('Секретная фраза', secret_phrase_entry.get()), style="Custom.TButton")
+show_secret_phrase_button.grid(row=3, column=2)
+
+save_button = ttk.Button(root, text='Сохранить пароль', command=save_password_gui, style="Custom.TButton")
+save_button.grid(row=4, column=0, columnspan=2)
+
+show_button = ttk.Button(root, text='Показать пароли', command=show_passwords_gui, style="Custom.TButton")
+show_button.grid(row=5, column=0, columnspan=2)
+
+passwords_text = tk.Text(root, font=("Helvetica", 12))
+passwords_text.grid(row=6, column=0, columnspan=3)
 
 root.mainloop()
