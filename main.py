@@ -1,6 +1,8 @@
 import base64
+import string
 import os
 import tkinter as tk
+import random
 from tkinter import messagebox
 from tkinter import ttk
 
@@ -10,6 +12,11 @@ os.makedirs(passwords_dir, exist_ok=True)
 PASSWORDS_FILE = os.path.join(passwords_dir, 'oak.txt')
 HINTS_FILE = os.path.join(passwords_dir, 'hints.txt')
 
+def generate_password(length=8):
+    characters = string.ascii_letters + string.digits
+    password = ''.join(random.choice(characters) for _ in range(length))
+    password = random.choice(string.ascii_uppercase) + password[1:]
+    return password
 
 def caesar_encrypt(plaintext, key):
     encrypted = ''
@@ -134,7 +141,7 @@ def show_passwords_gui():
                 print(f"Skipping invalid line: {line}")
                 continue
             decoded_password = decrypt_base64(encoded_password, key)
-            passwords_text.insert(tk.END, f"Сайт: {website}\nUsername: {username}\nPassword: {decoded_password}\n\n")
+            passwords_text.insert(tk.END, f"Сайт: {website}\nИмя пользователя: {username}\nПароль: {decoded_password}\n\n")
 
 
 def save_hint():
@@ -174,6 +181,10 @@ def show_password():
     else:
         messagebox.showinfo('Пароль', password)
 
+def generate_password_gui():
+    password = generate_password()
+    password_entry.delete(0, tk.END)
+    password_entry.insert(0, password)
 
 root = tk.Tk()
 root.title('Password Manager')
@@ -189,6 +200,9 @@ website_label = ttk.Label(root, text='Сайт:', style="Custom.TLabel")
 website_label.grid(row=0, column=0, sticky=tk.E)
 website_entry = ttk.Entry(root, style="Custom.TEntry")
 website_entry.grid(row=0, column=1)
+
+generate_button = ttk.Button(root, text='Сгенерировать пароль', command=generate_password_gui, style="Custom.TButton")
+generate_button.grid(row=4, column=2)
 
 username_label = ttk.Label(root, text='Имя пользователя:', style="Custom.TLabel")
 username_label.grid(row=1, column=0, sticky=tk.E)
